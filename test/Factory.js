@@ -8,7 +8,7 @@ describe("Factory", function () {
   const FEE = ethers.parseUnits("0.01", 18);
   async function deployFactoryFixture() {
     //Fectch accounts
-    const [deployer, creator] = await ethers.getSigners();
+    const [deployer, creator, buyer] = await ethers.getSigners();
     //Fetch and deploy contract
     const Factory = await ethers.getContractFactory("Factory");
     const factory = await Factory.deploy(FEE);
@@ -20,7 +20,17 @@ describe("Factory", function () {
     const tokenAddress = await factory.tokens(0);
     const token = await ethers.getContractAt("Token", tokenAddress);
 
-    return { factory, token, deployer, creator };
+    return { factory, token, deployer, creator, buyer };
+  }
+  async function buyTokenFixture() {
+    const { factory, token, creator, buyer } = await deployFactoryFixture();
+    const AMOUNT = ethers.parseUnits("10000", 18);
+    const COST = ethers.parseUnits("1", 18);
+    const transaction = await factory
+      .connect(buyer)
+      .buy(await token.getAddress(), AMOUNT, { value: COST });
+    await transaction.wait();
+    return { factory, token, creator, buyer };
   }
   describe("Deployment", function () {
     it("Should have a fee", async function () {
@@ -61,6 +71,35 @@ describe("Factory", function () {
       expect(sale.sold).to.equal(0);
       expect(sale.raised).to.equal(0);
       expect(sale.isOpen).to.equal(true);
+    });
+  });
+  describe("Buy", function () {
+    const AMOUNT = ethers.parseUnits("10000", 18);
+    const COST = ethers.parseUnits("1", 18);
+    it("Should update ETH balance", async function () {
+      const { factory } = await loadFixture(buyTokenFixture);
+      const balance = await ethers.provider.getBalance(
+        await factory.getAddress()
+      );
+      expect(balance).to.equal(FEE + COST);
+    });
+    it("Should update token balance", async function () {
+      const { token, buyer } = await loadFixture(buyTokenFixture);
+      const balance = await token.balanceOf(buyer.address);
+      expect(balance).to.equal(AMOUNT);
+    });
+    it("Should update sales", async function () {
+      const { factory, token } = await loadFixture(buyTokenFixture);
+      const sale = await factory.tokenToSale(await token.getAddress());
+      expect(sale.sold).to.equal(AMOUNT);
+      expect(sale.raised).to.equal(COST);
+      expect(sale.isOpen).to.equal(true);
+    });
+    it("Should increase base cost", async function () {
+      const { factory, token } = await loadFixture(buyTokenFixture);
+      const sale = await factory.tokenToSale(await token.getAddress());
+      const cost = await factory.getCost(sale.sold);
+      expect(cost).to.be.equal(ethers.parseUnits("0.0002"));
     });
   });
 });
