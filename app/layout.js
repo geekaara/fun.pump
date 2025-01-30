@@ -1,7 +1,7 @@
 import { Nabla } from "next/font/google";
 import "./globals.css";
 
-const nabla = Nabla({ subsets: ['latin'] })
+const nabla = Nabla({ subsets: ["latin"] });
 
 export const metadata = {
   title: "fun.pump",
@@ -11,9 +11,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${nabla.className}`}>
-        {children}
-      </body>
+      <body className={`${nabla.className}`}>{children}</body>
     </html>
   );
 }
