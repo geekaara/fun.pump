@@ -85,4 +85,24 @@ contract Factory {
         // Emit an event
         emit Buy(_token, _amount);
     }
+    function deposit(address _token) external{
+        //remain token balance + ETH Raised -> liquidity pool (uniswap v3)
+        // Simplicity token balance + ETH Raised -> creator
+        Token token = Token(_token);
+        TokenSale memory sale = tokenToSale[_token];
+        require(sale.isOpen == false, "Factory: Target Not Reached");
+        // Transfer token
+        token.transfer(sale.creator, token.balanceOf(address(this)));
+        // Transfer ETH
+        (bool success, ) = payable(sale.creator).call{value: sale.raised}("");
+        require(success, "Factory: ETH transfer failed");
+        // TODO
+        // check for ether balance = tests eth already loaded+paying gas fee+ether coming out of wallet make sure it is greater than certain amount
+    }
+    function withdraw(uint256 _amount) external {
+        require(msg.sender == owner, "Factory: Not owner");
+
+        (bool success, ) = payable(owner).call{value: _amount}("");
+        require(success, "Factory: ETH transfer failed");
+    }
 }
